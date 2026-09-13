@@ -127,7 +127,6 @@
     let dataComisiones = { tg_lote: [], tg_edifica: [], tg_construccion: [], tg_puerta: [] };
     let ambitosEvaluadosSet = new Set();
 
-    // NUEVO FORMATO DE PAD PARA EVITAR FALSAS INCONSISTENCIAS (ej. "1.0" -> "01")
     const cleanPad = (val, len) => {
       if (val === undefined || val === null) return "".padStart(len, '0');
       let s = String(val).trim();
@@ -248,7 +247,7 @@
       });
       evaluarCapa(mapAlfaEdifica, mapGrafEdifica, 'tg_edifica');
 
-      // 3. CONSTRUCCIONES (CORRECCIÓN IMPORTANTE)
+      // 3. CONSTRUCCIONES
       let mapGrafConst = new Map();
       dataGrafConst.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
@@ -257,7 +256,6 @@
         const l = cleanPad(row['cod_lote'], 3);
         const e = cleanPad(row['cod_edific'], 2);
         const piso = cleanPad(row['cod_piso'], 2);
-        // Eliminamos "entrada" de la llave porque el gráfico no lo tiene
         mapGrafConst.set(u + s + m + l + e + piso, row);
       });
 
@@ -271,7 +269,7 @@
           const l = codRef.substring(11, 14);
           const e = codRef.substring(14, 16);
           const piso = cleanPad(row['N° Piso'], 2);
-          const key = u + s + m + l + e + piso; // Consistente con gráfico
+          const key = u + s + m + l + e + piso;
           mapAlfaConst.set(key, {
             fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, cod_edific: e, cod_piso: piso, area: row['Área Verificada'] || 0
           });
@@ -279,7 +277,7 @@
       });
       evaluarCapa(mapAlfaConst, mapGrafConst, 'tg_construccion');
 
-      // 4. PUERTAS (CORRECCIÓN DE NOMBRE DE COLUMNA Y LLAVE EXACTA)
+      // 4. PUERTAS
       const mapTipoAlfaToCode = { "PRINCIPAL": 1, "SECUNDARIA": 2, "GARAJE": 3, "ESTACIONAMIENTO": 4 };
       let mapGrafPuertas = new Map();
       dataGrafPuertas.forEach(row => {
@@ -288,7 +286,6 @@
         const m = cleanPad(row['cod_mzna'], 3);
         const l = cleanPad(row['cod_lote'], 3);
         const orden = cleanPad(row['orden'], 2);
-        // La validación principal de existencia física es Lote + Orden
         mapGrafPuertas.set(u + s + m + l + "_ORD" + orden, row);
       });
 
@@ -301,7 +298,6 @@
         if (mznaGrafSet.has(u + s + m)) {
           const l = codLote.substring(11, 14);
           const orden = cleanPad(row['Número Orden'], 2);
-          // BUG FIX: Era 'Tipo de Puerta', no 'Tipo Vía'
           const tipoTexto = String(row['Tipo de Puerta'] || '').trim().toUpperCase(); 
           mapAlfaPuertas.set(u + s + m + l + "_ORD" + orden, {
             fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, 
@@ -329,8 +325,16 @@
     }
 
     function evaluarCapa(mapAlfa, mapGraf, nombreCapa) {
-      mapAlfa.forEach((rowAlfa, key) => { if (!mapGraf.has(key)) dataOmisiones[nombreCapa].push(rowAlfa); });
-      mapGraf.forEach((rowGraf, key) => { if (!mapAlfa.has(key)) dataComisiones[nombreCapa].push(rowGraf); });
+      mapAlfa.forEach((rowAlfa, key) => { 
+        if (!mapGraf.has(key)) {
+          dataOmisiones[nombreCapa].push({ ...rowAlfa, Reporte: "Existe SICUN falta en grafico" });
+        }
+      });
+      mapGraf.forEach((rowGraf, key) => { 
+        if (!mapAlfa.has(key)) {
+          dataComisiones[nombreCapa].push({ ...rowGraf, Reporte: "Existe en grafico falta en SICUN" });
+        }
+      });
     }
 
     function exportarLibroEspecializado(tipo) {
@@ -339,16 +343,16 @@
 
       const wb = XLSX.utils.book_new();
 
-      const wsLote = XLSX.utils.json_to_sheet(dataSource.tg_lote.length ? dataSource.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "" }]);
+      const wsLote = XLSX.utils.json_to_sheet(dataSource.tg_lote.length ? dataSource.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsLote, "tg_lote");
 
-      const wsEdifica = XLSX.utils.json_to_sheet(dataSource.tg_edifica.length ? dataSource.tg_edifica : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", area: "" }]);
+      const wsEdifica = XLSX.utils.json_to_sheet(dataSource.tg_edifica.length ? dataSource.tg_edifica : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", area: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsEdifica, "tg_edifica");
 
-      const wsConst = XLSX.utils.json_to_sheet(dataSource.tg_construccion.length ? dataSource.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", area: "" }]);
+      const wsConst = XLSX.utils.json_to_sheet(dataSource.tg_construccion.length ? dataSource.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", area: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsConst, "tg_construccion");
 
-      const wsPuerta = XLSX.utils.json_to_sheet(dataSource.tg_puerta.length ? dataSource.tg_puerta : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", tipo: "", num_munici: "", orden: "" }]);
+      const wsPuerta = XLSX.utils.json_to_sheet(dataSource.tg_puerta.length ? dataSource.tg_puerta : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", tipo: "", num_munici: "", orden: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsPuerta, "tg_puerta");
 
       XLSX.writeFile(wb, fileName);
