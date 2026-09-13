@@ -33,12 +33,12 @@
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
       <h2 class="text-lg font-semibold text-slate-900 mb-2 flex items-center gap-2">
         <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs flex items-center justify-center font-bold">1</span>
-        Carga Masiva de Reportes Excel (Múltiples archivos)
+        Carga Masiva de Reportes Excel
       </h2>
-      <p class="text-xs text-slate-500 mb-6">Puedes seleccionar o arrastrar todos tus archivos alfanuméricos y gráficos juntos o por grupos.</p>
+      <p class="text-xs text-slate-500 mb-6">Selecciona todos tus archivos alfanuméricos y gráficos (puedes seleccionarlos juntos).</p>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Reportes Alfanuméricos (Múltiples) -->
+        <!-- Reportes Alfanuméricos -->
         <div class="border-2 border-dashed border-slate-300 rounded-lg p-5 text-center hover:border-indigo-400 transition bg-slate-50/50">
           <label class="block cursor-pointer">
             <span class="text-sm font-semibold text-slate-700 block mb-1">Reportes Alfanuméricos (SICUN)</span>
@@ -51,7 +51,7 @@
           <div id="alfaList" class="mt-3 text-xs text-slate-600 space-y-1 max-h-24 overflow-y-auto font-mono"></div>
         </div>
 
-        <!-- Reportes Gráficos (Múltiples) -->
+        <!-- Reportes Gráficos -->
         <div class="border-2 border-dashed border-slate-300 rounded-lg p-5 text-center hover:border-indigo-400 transition bg-slate-50/50">
           <label class="block cursor-pointer">
             <span class="text-sm font-semibold text-slate-700 block mb-1">Reportes Gráficos (Shapefile)</span>
@@ -66,13 +66,13 @@
       </div>
     </div>
 
-    <!-- Sección 2: Botón de Procesamiento Completo -->
+    <!-- Sección 2: Botón de Procesamiento -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8 text-center">
       <button onclick="procesarTodo()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-xl transition shadow-lg flex items-center justify-center gap-2 text-base">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
         </svg>
-        Ejecutar Validación de Omisión y Comisión (4 Capas simultáneas por Sector y Manzana)
+        Ejecutar Validación de Omisión y Comisión (Filtrado por Sector y Manzana)
       </button>
     </div>
 
@@ -94,51 +94,75 @@
         <span class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-full font-medium shrink-0">Filtro Sector+Manzana Activo</span>
       </div>
 
-      <!-- Métricas Resumen General -->
+      <!-- Métricas Resumen General por Capa (Omisiones y Comisiones) -->
       <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <!-- Lotes -->
         <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm border-l-4 border-l-blue-500">
-          <span class="text-xs font-bold text-blue-600 uppercase block">Inconsistencias Lote</span>
-          <span id="statLotes" class="text-2xl font-extrabold text-slate-900 mt-1 block">0</span>
+          <span class="text-xs font-bold text-blue-600 uppercase block">Lotes</span>
+          <div class="mt-2 flex justify-between items-center text-xs">
+            <span class="text-amber-700 font-semibold">Omisiones: <strong id="statLotesOmision" class="text-base text-slate-900">0</strong></span>
+            <span class="text-rose-700 font-semibold">Comisiones: <strong id="statLotesComision" class="text-base text-slate-900">0</strong></span>
+          </div>
         </div>
+        <!-- Edificaciones -->
         <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm border-l-4 border-l-purple-500">
-          <span class="text-xs font-bold text-purple-600 uppercase block">Inconsistencias Edifica</span>
-          <span id="statEdificas" class="text-2xl font-extrabold text-slate-900 mt-1 block">0</span>
+          <span class="text-xs font-bold text-purple-600 uppercase block">Edificaciones</span>
+          <div class="mt-2 flex justify-between items-center text-xs">
+            <span class="text-amber-700 font-semibold">Omisiones: <strong id="statEdificasOmision" class="text-base text-slate-900">0</strong></span>
+            <span class="text-rose-700 font-semibold">Comisiones: <strong id="statEdificasComision" class="text-base text-slate-900">0</strong></span>
+          </div>
         </div>
+        <!-- Construcciones -->
         <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
-          <span class="text-xs font-bold text-amber-600 uppercase block">Inconsistencias Construcción</span>
-          <span id="statConstrucciones" class="text-2xl font-extrabold text-slate-900 mt-1 block">0</span>
+          <span class="text-xs font-bold text-amber-600 uppercase block">Construcciones</span>
+          <div class="mt-2 flex justify-between items-center text-xs">
+            <span class="text-amber-700 font-semibold">Omisiones: <strong id="statConstOmision" class="text-base text-slate-900">0</strong></span>
+            <span class="text-rose-700 font-semibold">Comisiones: <strong id="statConstComision" class="text-base text-slate-900">0</strong></span>
+          </div>
         </div>
+        <!-- Puertas -->
         <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm border-l-4 border-l-rose-500">
-          <span class="text-xs font-bold text-rose-600 uppercase block">Inconsistencias Puerta</span>
-          <span id="statPuertas" class="text-2xl font-extrabold text-slate-900 mt-1 block">0</span>
+          <span class="text-xs font-bold text-rose-600 uppercase block">Puertas / Accesos</span>
+          <div class="mt-2 flex justify-between items-center text-xs">
+            <span class="text-amber-700 font-semibold">Omisiones: <strong id="statPuertasOmision" class="text-base text-slate-900">0</strong></span>
+            <span class="text-rose-700 font-semibold">Comisiones: <strong id="statPuertasComision" class="text-base text-slate-900">0</strong></span>
+          </div>
         </div>
       </div>
 
-      <!-- Botón Unificado de Descarga de Excel de 4 Pestañas -->
+      <!-- Botones de Exportación Independientes: Omisión vs Comisión -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div>
-          <h3 class="text-base font-semibold text-slate-900">Consolidado Final de Omisiones y Comisiones</h3>
-          <p class="text-xs text-slate-500">Descarga un solo archivo Excel organizado en pestañas por tipo de entidad.</p>
+          <h3 class="text-base font-semibold text-slate-900">Descarga de Reportes Especializados</h3>
+          <p class="text-xs text-slate-500">Cada libro Excel mantendrá la estructura exacta de las capas gráficas (tg_lote, tg_edifica, tg_construccion, tg_puerta).</p>
         </div>
-        <button onclick="exportarExcelConsolidado()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-6 py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-          </svg>
-          Descargar Reporte Consolidado (.xlsx)
-        </button>
+        
+        <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <!-- Descargar OMISIÓN -->
+          <button onclick="exportarLibroEspecializado('OMISION')" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm px-5 py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Descargar Reporte OMISIÓN (.xlsx)
+          </button>
+
+          <!-- Descargar COMISIÓN -->
+          <button onclick="exportarLibroEspecializado('COMISION')" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm px-5 py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Descargar Reporte COMISIÓN (.xlsx)
+          </button>
+        </div>
       </div>
 
     </div>
   </main>
 
   <script>
-    let filesAlfaMap = {};
-    let filesGrafMap = {};
-
-    let resultLotes = [];
-    let resultEdificas = [];
-    let resultConstrucciones = [];
-    let resultPuertas = [];
+    // Estructuras de Almacenamiento por Capa y Tipo
+    let dataOmisiones = { tg_lote: [], tg_edifica: [], tg_construccion: [], tg_puerta: [] };
+    let dataComisiones = { tg_lote: [], tg_edifica: [], tg_construccion: [], tg_puerta: [] };
     let ambitosEvaluadosSet = new Set();
 
     const pad = (num, len) => String(num !== undefined && num !== null ? num : '').padStart(len, '0');
@@ -186,7 +210,11 @@
         return;
       }
 
-      // Clasificamos archivos alfanuméricos y gráficos cargados según su nombre
+      // Limpiar estructuras
+      dataOmisiones = { tg_lote: [], tg_edifica: [], tg_construccion: [], tg_puerta: [] };
+      dataComisiones = { tg_lote: [], tg_edifica: [], tg_construccion: [], tg_puerta: [] };
+      ambitosEvaluadosSet.clear();
+
       let dataAlfaLotes = [], dataAlfaEdificas = [], dataAlfaConst = [], dataAlfaPuertas = [];
       let dataGrafLotes = [], dataGrafEdificas = [], dataGrafConst = [], dataGrafPuertas = [];
 
@@ -208,9 +236,7 @@
         else if (name.includes('puerta')) dataGrafPuertas = json;
       }
 
-      ambitosEvaluadosSet.clear();
-
-      // 1. PROCESAR LOTES (Extracción de Sector + Manzana)
+      // 1. EVALUAR LOTES
       let mznaGrafSet = new Set();
       let mapGrafLotes = new Map();
       dataGrafLotes.forEach(row => {
@@ -218,12 +244,9 @@
         const s = pad(row['cod_sector'], 2);
         const m = pad(row['cod_mzna'], 3);
         const l = pad(row['cod_lote'], 3);
-        const secMzna = u + s + m; // Llave de Sector + Manzana (11 dígitos)
-        mznaGrafSet.add(secMzna);
+        mznaGrafSet.add(u + s + m);
         ambitosEvaluadosSet.add(`Sec:${s} Mz:${m}`);
-        
-        const key = u + s + m + l;
-        mapGrafLotes.set(key, row);
+        mapGrafLotes.set(u + s + m + l, row);
       });
 
       let mapAlfaLotes = new Map();
@@ -231,18 +254,21 @@
         const u = pad(row['Ubigeo'], 6);
         const s = pad(row['Sector'], 2);
         const m = pad(row['Manzana'], 3);
-        const secMzna = u + s + m;
-
-        // FILTRO STRICTO POR SECTOR Y MANZANA
-        if (mznaGrafSet.has(secMzna)) {
+        if (mznaGrafSet.has(u + s + m)) {
           const l = pad(row['Lote'], 3);
-          const key = u + s + m + l;
-          mapAlfaLotes.set(key, row);
+          mapAlfaLotes.set(u + s + m + l, {
+            fid: 0,
+            ubigeo: row['Ubigeo'],
+            cod_sector: row['Sector'],
+            cod_mzna: row['Manzana'],
+            cod_lote: row['Lote'],
+            area: 0
+          });
         }
       });
-      resultLotes = compararOmisionComision(mapAlfaLotes, mapGrafLotes);
+      evaluarCapa(mapAlfaLotes, mapGrafLotes, 'tg_lote');
 
-      // 2. PROCESAR EDIFICACIONES
+      // 2. EVALUAR EDIFICACIONES
       let mapGrafEdifica = new Map();
       dataGrafEdificas.forEach(row => {
         const u = pad(row['ubigeo'], 6);
@@ -251,8 +277,7 @@
         const l = pad(row['cod_lote'], 3);
         const e = pad(row['cod_edific'], 2);
         mznaGrafSet.add(u + s + m);
-        const key = u + s + m + l + e;
-        mapGrafEdifica.set(key, row);
+        mapGrafEdifica.set(u + s + m + l + e, row);
       });
 
       let mapAlfaEdifica = new Map();
@@ -260,17 +285,23 @@
         const u = pad(row['Ubigeo'], 6);
         const s = pad(row['Sector'], 2);
         const m = pad(row['Manzana'], 3);
-        const secMzna = u + s + m;
-        if (mznaGrafSet.has(secMzna)) {
+        if (mznaGrafSet.has(u + s + m)) {
           const l = pad(row['Lote'], 3);
           const e = pad(row['Edifica'], 2);
-          const key = u + s + m + l + e;
-          mapAlfaEdifica.set(key, row);
+          mapAlfaEdifica.set(u + s + m + l + e, {
+            fid: 0,
+            ubigeo: row['Ubigeo'],
+            cod_sector: row['Sector'],
+            cod_mzna: row['Manzana'],
+            cod_lote: row['Lote'],
+            cod_edific: row['Edifica'],
+            area: 0
+          });
         }
       });
-      resultEdificas = compararOmisionComision(mapAlfaEdifica, mapGrafEdifica);
+      evaluarCapa(mapAlfaEdifica, mapGrafEdifica, 'tg_edifica');
 
-      // 3. PROCESAR CONSTRUCCIONES
+      // 3. EVALUAR CONSTRUCCIONES
       let mapGrafConst = new Map();
       dataGrafConst.forEach(row => {
         const u = pad(row['ubigeo'], 6);
@@ -278,11 +309,9 @@
         const m = pad(row['cod_mzna'], 3);
         const l = pad(row['cod_lote'], 3);
         const e = pad(row['cod_edific'], 2);
-        const entrada = "01";
         const piso = pad(row['cod_piso'], 2);
         mznaGrafSet.add(u + s + m);
-        const key = u + s + m + l + e + entrada + piso;
-        mapGrafConst.set(key, row);
+        mapGrafConst.set(u + s + m + l + e + "01" + piso, row);
       });
 
       let mapAlfaConst = new Map();
@@ -291,33 +320,36 @@
         const u = codRef.substring(0, 6);
         const s = codRef.substring(6, 8);
         const m = codRef.substring(8, 11);
-        const secMzna = u + s + m;
-
-        if (mznaGrafSet.has(secMzna)) {
+        if (mznaGrafSet.has(u + s + m)) {
+          const l = codRef.substring(11, 14);
+          const e = codRef.substring(14, 16);
           const piso = pad(row['N° Piso'], 2);
-          const base16 = codRef.substring(0, 16);
-          const key = base16 + piso;
-          mapAlfaConst.set(key, row);
+          const key = u + s + m + l + e + "01" + piso;
+          mapAlfaConst.set(key, {
+            fid: 0,
+            ubigeo: parseInt(u) || 0,
+            cod_sector: parseInt(s) || 0,
+            cod_mzna: parseInt(m) || 0,
+            cod_lote: parseInt(l) || 0,
+            cod_edific: parseInt(e) || 0,
+            cod_piso: parseInt(row['N° Piso']) || 0,
+            area: row['Área Verificada'] || 0
+          });
         }
       });
-      resultConstrucciones = compararOmisionComision(mapAlfaConst, mapGrafConst);
+      evaluarCapa(mapAlfaConst, mapGrafConst, 'tg_construccion');
 
-      // 4. PROCESAR PUERTAS
-      const mapTipoGraf = { "01": "PRINCIPAL", "02": "SECUNDARIA", "03": "GARAJE", "04": "ESTACIONAMIENTO" };
+      // 4. EVALUAR PUERTAS
+      const mapTipoAlfaToCode = { "PRINCIPAL": 1, "SECUNDARIA": 2, "GARAJE": 3, "ESTACIONAMIENTO": 4 };
       let mapGrafPuertas = new Map();
       dataGrafPuertas.forEach(row => {
         const u = pad(row['ubigeo'], 6);
         const s = pad(row['cod_sector'], 2);
         const m = pad(row['cod_mzna'], 3);
         const l = pad(row['cod_lote'], 3);
-        const codLote = u + s + m + l;
         const orden = pad(row['orden'], 2);
-        const tipoCode = pad(row['tipo'], 2);
-        const tipoNombre = mapTipoGraf[tipoCode] || tipoCode;
-        const num = String(row['num_munici'] || '').trim().toUpperCase();
         mznaGrafSet.add(u + s + m);
-        const key = `${codLote}_ORD${orden}`;
-        mapGrafPuertas.set(key, { ...row, _tipo: tipoNombre, _num: num });
+        mapGrafPuertas.set(`${u}${s}${m}${l}_ORD${orden}`, row);
       });
 
       let mapAlfaPuertas = new Map();
@@ -326,78 +358,82 @@
         const u = codLote.substring(0, 6);
         const s = codLote.substring(6, 8);
         const m = codLote.substring(8, 11);
-        const secMzna = u + s + m;
-
-        if (mznaGrafSet.has(secMzna)) {
+        if (mznaGrafSet.has(u + s + m)) {
+          const l = codLote.substring(11, 14);
           const orden = pad(row['Número Orden'], 2);
-          const tipo = String(row['Tipo Vía'] || '').trim().toUpperCase();
-          const num = String(row['Número Municipal'] || '').trim().toUpperCase();
-          const key = `${codLote}_ORD${orden}`;
-          mapAlfaPuertas.set(key, { ...row, _tipo: tipo, _num: num });
+          const tipoTexto = String(row['Tipo Vía'] || '').trim().toUpperCase();
+          mapAlfaPuertas.set(`${u}${s}${m}${l}_ORD${orden}`, {
+            fid: 0,
+            ubigeo: parseInt(u) || 0,
+            cod_sector: parseInt(s) || 0,
+            cod_mzna: parseInt(m) || 0,
+            cod_lote: parseInt(l) || 0,
+            tipo: mapTipoAlfaToCode[tipoTexto] || 1,
+            num_munici: String(row['Número Municipal'] || 'S/N'),
+            orden: parseInt(row['Número Orden']) || 1
+          });
         }
       });
-      resultPuertas = compararOmisionComision(mapAlfaPuertas, mapGrafPuertas);
+      evaluarCapa(mapAlfaPuertas, mapGrafPuertas, 'tg_puerta');
 
-      // Mostrar Resultados UI
+      // Actualizar Métricas UI
       document.getElementById('ambitosDetectadosBadge').innerText = Array.from(ambitosEvaluadosSet).slice(0, 10).join(' | ') + (ambitosEvaluadosSet.size > 10 ? ' ... y más' : '');
-      document.getElementById('statLotes').innerText = resultLotes.length;
-      document.getElementById('statEdificas').innerText = resultEdificas.length;
-      document.getElementById('statConstrucciones').innerText = resultConstrucciones.length;
-      document.getElementById('statPuertas').innerText = resultPuertas.length;
+
+      document.getElementById('statLotesOmision').innerText = dataOmisiones.tg_lote.length;
+      document.getElementById('statLotesComision').innerText = dataComisiones.tg_lote.length;
+
+      document.getElementById('statEdificasOmision').innerText = dataOmisiones.tg_edifica.length;
+      document.getElementById('statEdificasComision').innerText = dataComisiones.tg_edifica.length;
+
+      document.getElementById('statConstOmision').innerText = dataOmisiones.tg_construccion.length;
+      document.getElementById('statConstComision').innerText = dataComisiones.tg_construccion.length;
+
+      document.getElementById('statPuertasOmision').innerText = dataOmisiones.tg_puerta.length;
+      document.getElementById('statPuertasComision').innerText = dataComisiones.tg_puerta.length;
 
       document.getElementById('resultsSection').classList.remove('hidden');
     }
 
-    function compararOmisionComision(mapAlfa, mapGraf) {
-      let result = [];
-      
-      // Omisiones
-      mapAlfa.forEach((valAlfa, key) => {
+    function evaluarCapa(mapAlfa, mapGraf, nombreCapa) {
+      // Omisiones (Existe en Alfa pero no en Gráfico -> Formateado como la estructura Gráfica)
+      mapAlfa.forEach((rowAlfa, key) => {
         if (!mapGraf.has(key)) {
-          result.push({
-            Clave_Identificadora: key,
-            Estado_Inconsistencia: 'OMISIÓN (En SICUN, no en Gráfico)',
-            Origen: 'SICUN',
-            ...valAlfa
-          });
+          dataOmisiones[nombreCapa].push(rowAlfa);
         }
       });
 
-      // Comisiones
-      mapGraf.forEach((valGraf, key) => {
+      // Comisiones (Existe en Gráfico pero no en Alfa -> Directo con la estructura Gráfica)
+      mapGraf.forEach((rowGraf, key) => {
         if (!mapAlfa.has(key)) {
-          result.push({
-            Clave_Identificadora: key,
-            Estado_Inconsistencia: 'COMISIÓN (En Gráfico, no en SICUN)',
-            Origen: 'GRÁFICO',
-            ...valGraf
-          });
+          dataComisiones[nombreCapa].push(rowGraf);
         }
       });
-
-      return result;
     }
 
-    function exportarExcelConsolidado() {
+    function exportarLibroEspecializado(tipo) {
+      const isOmision = tipo === 'OMISION';
+      const dataSource = isOmision ? dataOmisiones : dataComisiones;
+      const fileName = isOmision ? "Reporte_Omision.xlsx" : "Reporte_Comision.xlsx";
+
       const wb = XLSX.utils.book_new();
 
-      // Pestaña 1: Lote
-      const wsLote = XLSX.utils.json_to_sheet(resultLotes.length > 0 ? resultLotes : [{ Mensaje: "Sin inconsistencias de Omisión/Comisión en Lotes" }]);
-      XLSX.utils.book_append_sheet(wb, wsLote, "Lotes");
+      // Pestaña 1: tg_lote
+      const wsLote = XLSX.utils.json_to_sheet(dataSource.tg_lote.length > 0 ? dataSource.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "" }]);
+      XLSX.utils.book_append_sheet(wb, wsLote, "tg_lote");
 
-      // Pestaña 2: Edifica
-      const wsEdifica = XLSX.utils.json_to_sheet(resultEdificas.length > 0 ? resultEdificas : [{ Mensaje: "Sin inconsistencias de Omisión/Comisión en Edificaciones" }]);
-      XLSX.utils.book_append_sheet(wb, wsEdifica, "Edificaciones");
+      // Pestaña 2: tg_edifica
+      const wsEdifica = XLSX.utils.json_to_sheet(dataSource.tg_edifica.length > 0 ? dataSource.tg_edifica : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", area: "" }]);
+      XLSX.utils.book_append_sheet(wb, wsEdifica, "tg_edifica");
 
-      // Pestaña 3: Construcción
-      const wsConst = XLSX.utils.json_to_sheet(resultConstrucciones.length > 0 ? resultConstrucciones : [{ Mensaje: "Sin inconsistencias de Omisión/Comisión en Construcciones" }]);
-      XLSX.utils.book_append_sheet(wb, wsConst, "Construcciones");
+      // Pestaña 3: tg_construccion
+      const wsConst = XLSX.utils.json_to_sheet(dataSource.tg_construccion.length > 0 ? dataSource.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", area: "" }]);
+      XLSX.utils.book_append_sheet(wb, wsConst, "tg_construccion");
 
-      // Pestaña 4: Puerta
-      const wsPuerta = XLSX.utils.json_to_sheet(resultPuertas.length > 0 ? resultPuertas : [{ Mensaje: "Sin inconsistencias de Omisión/Comisión en Puertas" }]);
-      XLSX.utils.book_append_sheet(wb, wsPuerta, "Puertas");
+      // Pestaña 4: tg_puerta
+      const wsPuerta = XLSX.utils.json_to_sheet(dataSource.tg_puerta.length > 0 ? dataSource.tg_puerta : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", tipo: "", num_munici: "", orden: "" }]);
+      XLSX.utils.book_append_sheet(wb, wsPuerta, "tg_puerta");
 
-      XLSX.writeFile(wb, "Reporte_Consolidado_Omision_Comision.xlsx");
+      XLSX.writeFile(wb, fileName);
     }
   </script>
 </body>
