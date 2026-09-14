@@ -61,7 +61,7 @@
     <!-- Procesar -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8 text-center">
       <button onclick="procesarTodo()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-xl transition shadow-lg flex items-center justify-center gap-2 text-base">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
         Ejecutar Validaciones (Omisión, Comisión y Diferencia de Áreas)
       </button>
     </div>
@@ -139,7 +139,7 @@
           <!-- Descargar DIFERENCIA DE ÁREAS -->
           <button onclick="exportarLibroEspecializado('DIF_AREA')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-4 py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            Consolidado DIFERENCIA ÁREA (.xlsx)
+            Consolidado DIF. DE ÁREA (.xlsx)
           </button>
         </div>
       </div>
@@ -221,7 +221,7 @@
         else if (name.includes('puerta')) dataGrafPuertas = json;
       }
 
-      // 1. EVALUACIÓN DE LOTES (Omisión / Comisión) Y DIFERENCIA DE ÁREA TERRENO
+      // 1. EVALUACIÓN DE LOTES (Omisión / Comisión)
       let mznaGrafSet = new Set();
       let mapGrafLotes = new Map();
       dataGrafLotes.forEach(row => {
@@ -274,13 +274,12 @@
             const areaAlfa = mapAreaTerrenoAlfa.get(key);
             const areaGraf = parseFloat(rowGraf['area']) || 0;
             const dif = Math.abs(areaAlfa - areaGraf);
-            if (dif > 0.0001) { // Diferencia != 0
+            if (dif > 0.0001) { 
               dataDifAreas.tg_lote.push({
-                ...rowGraf,
-                area_alfa: areaAlfa,
+                ...rowGraf, // Conserva columnas originales de tg_lote
                 area_grafica: areaGraf,
-                diferencia_area: Number((areaAlfa - areaGraf).toFixed(2)),
-                Reporte: "Diferencia de Area Terreno"
+                area_SICUN: areaAlfa,
+                diferencia: Number(dif.toFixed(2))
               });
             }
           }
@@ -345,26 +344,25 @@
             fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, cod_edific: e, cod_piso: piso, area: 0
           });
 
-          // SUMATORIA DE ÁREAS POR PISO (Por si un piso tiene múltiples unidades/departamentos)
+          // SUMATORIA DE ÁREAS POR PISO
           mapAlfaConstAreasSum.set(key, (mapAlfaConstAreasSum.get(key) || 0) + areaVal);
         }
       });
 
       evaluarCapa(mapAlfaConstOmision, mapGrafConst, 'tg_construccion');
 
-      // 3.B. DIFERENCIA DE ÁREA EN CONSTRUCCIONES (Tolerancia Cero: Suma Alfa != Area Grafica)
+      // 3.B. DIFERENCIA DE ÁREA EN CONSTRUCCIONES (Tolerancia Cero)
       mapGrafConst.forEach((rowGraf, key) => {
         if (mapAlfaConstAreasSum.has(key)) {
           const areaAlfaAcumulada = mapAlfaConstAreasSum.get(key);
           const areaGraf = parseFloat(rowGraf['area']) || 0;
           const dif = Math.abs(areaAlfaAcumulada - areaGraf);
-          if (dif > 0.0001) { // Diferencia de área mayor a 0 (Tolerancia cero)
+          if (dif > 0.0001) { 
             dataDifAreas.tg_construccion.push({
-              ...rowGraf,
-              area_alfa_acumulada: Number(areaAlfaAcumulada.toFixed(2)),
+              ...rowGraf, // Conserva columnas originales de tg_construccion
               area_grafica: areaGraf,
-              diferencia_area: Number((areaAlfaAcumulada - areaGraf).toFixed(2)),
-              Reporte: "Diferencia de Area Construida por Piso"
+              area_SICUN: Number(areaAlfaAcumulada.toFixed(2)),
+              diferencia: Number(dif.toFixed(2))
             });
           }
         }
@@ -446,11 +444,13 @@
         fileName = "Reporte_Comision_Consolidado.xlsx";
         appendSheetsToWb(wb, dataComisiones);
       } else if (tipo === 'DIF_AREA') {
-        fileName = "Reporte_Diferencia_Areas_Consolidado.xlsx";
-        const wsLote = XLSX.utils.json_to_sheet(dataDifAreas.tg_lote.length ? dataDifAreas.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "", area_alfa: "", area_grafica: "", diferencia_area: "", Reporte: "" }]);
+        fileName = "Reporte_Diferencias_Areas.xlsx";
+        // Pestaña tg_lote con nombres exactos de columnas
+        const wsLote = XLSX.utils.json_to_sheet(dataDifAreas.tg_lote.length ? dataDifAreas.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "", area_grafica: "", area_SICUN: "", diferencia: "" }]);
         XLSX.utils.book_append_sheet(wb, wsLote, "tg_lote");
 
-        const wsConst = XLSX.utils.json_to_sheet(dataDifAreas.tg_construccion.length ? dataDifAreas.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", area: "", area_alfa_acumulada: "", area_grafica: "", diferencia_area: "", Reporte: "" }]);
+        // Pestaña tg_construccion con nombres exactos de columnas
+        const wsConst = XLSX.utils.json_to_sheet(dataDifAreas.tg_construccion.length ? dataDifAreas.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", area: "", area_grafica: "", area_SICUN: "", diferencia: "" }]);
         XLSX.utils.book_append_sheet(wb, wsConst, "tg_construccion");
       }
 
