@@ -61,7 +61,7 @@
     <!-- Procesar -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8 text-center">
       <button onclick="procesarTodo()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-xl transition shadow-lg flex items-center justify-center gap-2 text-base">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
         Ejecutar Validaciones (Omisión, Comisión y Diferencia de Áreas)
       </button>
     </div>
@@ -160,7 +160,7 @@
       return s.padStart(len, '0');
     };
 
-    // NO rellena con ceros (Ideal para el número de orden de puertas)
+    // NO rellena con ceros. Extrae el valor tal cual.
     const cleanNoPad = (val) => {
       if (val === undefined || val === null) return "";
       let s = String(val).trim();
@@ -374,16 +374,19 @@
         }
       });
 
-      // 4. PUERTAS (Corrección Aplicada: Tipo con Ceros, Orden sin Ceros)
+      // 4. PUERTAS (Ceros eliminados para la comparación del gráfico)
       const mapTipoAlfaToCode = { "PRINCIPAL": "01", "SECUNDARIA": "02", "GARAJE": "03", "ESTACIONAMIENTO": "04" };
+      
       let mapGrafPuertas = new Map();
       dataGrafPuertas.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
         const s = cleanPad(row['cod_sector'], 2);
         const m = cleanPad(row['cod_mzna'], 3);
         const l = cleanPad(row['cod_lote'], 3);
-        const tipo = cleanPad(row['tipo'], 2); // Forzar 2 dígitos para el Tipo
-        const orden = cleanNoPad(row['orden']); // Extraer Orden natural sin ceros a la izquierda
+        
+        // SIN FORZAR CEROS (Así, si viene "1", se queda como "1")
+        const tipo = cleanNoPad(row['tipo']); 
+        const orden = cleanNoPad(row['orden']); 
         
         const key = u + s + m + l + "_T" + tipo + "_O" + orden;
         mapGrafPuertas.set(key, row);
@@ -399,14 +402,15 @@
           const l = codLote.substring(11, 14);
           
           const tipoTexto = String(row['Tipo de Puerta'] || '').trim().toUpperCase(); 
+          // Mapeo exacto con su cero ("01", "02", "03", "04")
           const tipo = mapTipoAlfaToCode[tipoTexto] || "01"; 
-          const orden = cleanNoPad(row['Número Orden']); // Extraer Orden natural sin ceros
+          const orden = cleanNoPad(row['Número Orden']);
           
           const key = u + s + m + l + "_T" + tipo + "_O" + orden;
           
           mapAlfaPuertas.set(key, {
             fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, 
-            tipo: parseInt(tipo, 10), // Conservarlo numérico para que Excel lo vea limpio (1, 2, 3...)
+            tipo: tipo, // Guardamos el texto "01" explícito
             num_munici: String(row['Número Municipal'] || 'S/N'), 
             orden: orden
           });
