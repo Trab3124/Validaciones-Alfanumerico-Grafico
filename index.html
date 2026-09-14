@@ -61,7 +61,7 @@
     <!-- Procesar -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8 text-center">
       <button onclick="procesarTodo()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-xl transition shadow-lg flex items-center justify-center gap-2 text-base">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
         Ejecutar Validaciones (Omisión, Comisión y Diferencia de Áreas)
       </button>
     </div>
@@ -152,11 +152,20 @@
     let dataDifAreas = { tg_lote: [], tg_construccion: [] };
     let ambitosEvaluadosSet = new Set();
 
+    // Rellena con ceros a la izquierda
     const cleanPad = (val, len) => {
       if (val === undefined || val === null) return "".padStart(len, '0');
       let s = String(val).trim();
       if (s.endsWith('.0')) s = s.slice(0, -2);
       return s.padStart(len, '0');
+    };
+
+    // NO rellena con ceros (Ideal para el número de orden de puertas)
+    const cleanNoPad = (val) => {
+      if (val === undefined || val === null) return "";
+      let s = String(val).trim();
+      if (s.endsWith('.0')) s = s.slice(0, -2);
+      return s;
     };
 
     function onFilesSelected(input, labelId, listId) {
@@ -248,7 +257,7 @@
       });
       evaluarCapa(mapAlfaLotes, mapGrafLotes, 'tg_lote');
 
-      // 1.B. DIFERENCIA DE ÁREA TERRENO EN LOTES (Usando Reporte_Unidades Administrativas)
+      // 1.B. DIFERENCIA DE ÁREA TERRENO EN LOTES
       if (dataAlfaUA.length > 0) {
         let mapAreaTerrenoAlfa = new Map();
         dataAlfaUA.forEach(row => {
@@ -268,7 +277,6 @@
           }
         });
 
-        // Comparar con tg_lote (Tolerancia Cero: areaAlfa != areaGraf)
         mapGrafLotes.forEach((rowGraf, key) => {
           if (mapAreaTerrenoAlfa.has(key)) {
             const areaAlfa = mapAreaTerrenoAlfa.get(key);
@@ -276,7 +284,7 @@
             const dif = Math.abs(areaAlfa - areaGraf);
             if (dif > 0.0001) { 
               dataDifAreas.tg_lote.push({
-                ...rowGraf, // Conserva columnas originales de tg_lote
+                ...rowGraf, 
                 area_grafica: areaGraf,
                 area_SICUN: areaAlfa,
                 diferencia: Number(dif.toFixed(2))
@@ -339,19 +347,17 @@
           const key = u + s + m + l + e + piso;
           const areaVal = parseFloat(row['Área Verificada']) || 0;
 
-          // Mapa para Omisiones
           mapAlfaConstOmision.set(key, {
             fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, cod_edific: e, cod_piso: piso, area: 0
           });
 
-          // SUMATORIA DE ÁREAS POR PISO
           mapAlfaConstAreasSum.set(key, (mapAlfaConstAreasSum.get(key) || 0) + areaVal);
         }
       });
 
       evaluarCapa(mapAlfaConstOmision, mapGrafConst, 'tg_construccion');
 
-      // 3.B. DIFERENCIA DE ÁREA EN CONSTRUCCIONES (Tolerancia Cero)
+      // 3.B. DIFERENCIA DE ÁREA EN CONSTRUCCIONES
       mapGrafConst.forEach((rowGraf, key) => {
         if (mapAlfaConstAreasSum.has(key)) {
           const areaAlfaAcumulada = mapAlfaConstAreasSum.get(key);
@@ -359,7 +365,7 @@
           const dif = Math.abs(areaAlfaAcumulada - areaGraf);
           if (dif > 0.0001) { 
             dataDifAreas.tg_construccion.push({
-              ...rowGraf, // Conserva columnas originales de tg_construccion
+              ...rowGraf,
               area_grafica: areaGraf,
               area_SICUN: Number(areaAlfaAcumulada.toFixed(2)),
               diferencia: Number(dif.toFixed(2))
@@ -368,16 +374,19 @@
         }
       });
 
-      // 4. PUERTAS (Omisión / Comisión)
-      const mapTipoAlfaToCode = { "PRINCIPAL": 1, "SECUNDARIA": 2, "GARAJE": 3, "ESTACIONAMIENTO": 4 };
+      // 4. PUERTAS (Corrección Aplicada: Tipo con Ceros, Orden sin Ceros)
+      const mapTipoAlfaToCode = { "PRINCIPAL": "01", "SECUNDARIA": "02", "GARAJE": "03", "ESTACIONAMIENTO": "04" };
       let mapGrafPuertas = new Map();
       dataGrafPuertas.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
         const s = cleanPad(row['cod_sector'], 2);
         const m = cleanPad(row['cod_mzna'], 3);
         const l = cleanPad(row['cod_lote'], 3);
-        const orden = cleanPad(row['orden'], 2);
-        mapGrafPuertas.set(u + s + m + l + "_ORD" + orden, row);
+        const tipo = cleanPad(row['tipo'], 2); // Forzar 2 dígitos para el Tipo
+        const orden = cleanNoPad(row['orden']); // Extraer Orden natural sin ceros a la izquierda
+        
+        const key = u + s + m + l + "_T" + tipo + "_O" + orden;
+        mapGrafPuertas.set(key, row);
       });
 
       let mapAlfaPuertas = new Map();
@@ -388,11 +397,16 @@
         const m = codLote.substring(8, 11);
         if (mznaGrafSet.has(u + s + m)) {
           const l = codLote.substring(11, 14);
-          const orden = cleanPad(row['Número Orden'], 2);
+          
           const tipoTexto = String(row['Tipo de Puerta'] || '').trim().toUpperCase(); 
-          mapAlfaPuertas.set(u + s + m + l + "_ORD" + orden, {
+          const tipo = mapTipoAlfaToCode[tipoTexto] || "01"; 
+          const orden = cleanNoPad(row['Número Orden']); // Extraer Orden natural sin ceros
+          
+          const key = u + s + m + l + "_T" + tipo + "_O" + orden;
+          
+          mapAlfaPuertas.set(key, {
             fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, 
-            tipo: mapTipoAlfaToCode[tipoTexto] || 1, 
+            tipo: parseInt(tipo, 10), // Conservarlo numérico para que Excel lo vea limpio (1, 2, 3...)
             num_munici: String(row['Número Municipal'] || 'S/N'), 
             orden: orden
           });
@@ -445,11 +459,11 @@
         appendSheetsToWb(wb, dataComisiones);
       } else if (tipo === 'DIF_AREA') {
         fileName = "Reporte_Diferencias_Areas.xlsx";
-        // Pestaña tg_lote con nombres exactos de columnas
+        // Pestaña tg_lote
         const wsLote = XLSX.utils.json_to_sheet(dataDifAreas.tg_lote.length ? dataDifAreas.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "", area_grafica: "", area_SICUN: "", diferencia: "" }]);
         XLSX.utils.book_append_sheet(wb, wsLote, "tg_lote");
 
-        // Pestaña tg_construccion con nombres exactos de columnas
+        // Pestaña tg_construccion
         const wsConst = XLSX.utils.json_to_sheet(dataDifAreas.tg_construccion.length ? dataDifAreas.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", area: "", area_grafica: "", area_SICUN: "", diferencia: "" }]);
         XLSX.utils.book_append_sheet(wb, wsConst, "tg_construccion");
       }
