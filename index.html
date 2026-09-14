@@ -168,6 +168,15 @@
       return s;
     };
 
+    // Limpiador estricto para Número Municipal (quita .0, espacios y asume "S/N" si está vacío)
+    const cleanNumMunici = (val) => {
+      if (val === undefined || val === null || val === '') return "S/N";
+      let s = String(val).trim().toUpperCase();
+      if (s.endsWith('.0')) s = s.slice(0, -2);
+      if (s === '') return "S/N";
+      return s;
+    };
+
     function onFilesSelected(input, labelId, listId) {
       const files = Array.from(input.files);
       const listDiv = document.getElementById(listId);
@@ -320,7 +329,7 @@
       });
       evaluarCapa(mapAlfaEdifica, mapGrafEdifica, 'tg_edifica');
 
-      // 3. CONSTRUCCIONES (Omisión / Comisión) Y SUMATORIA DE ÁREAS POR PISO
+      // 3. CONSTRUCCIONES (Omisión / Comisión)
       let mapGrafConst = new Map();
       dataGrafConst.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
@@ -374,7 +383,7 @@
         }
       });
 
-      // 4. PUERTAS (Ceros eliminados para la comparación del gráfico)
+      // 4. PUERTAS (Corrección Aplicada: Tipo, Orden y Num. Municipal en la Llave)
       const mapTipoAlfaToCode = { "PRINCIPAL": "01", "SECUNDARIA": "02", "GARAJE": "03", "ESTACIONAMIENTO": "04" };
       
       let mapGrafPuertas = new Map();
@@ -384,11 +393,12 @@
         const m = cleanPad(row['cod_mzna'], 3);
         const l = cleanPad(row['cod_lote'], 3);
         
-        // SIN FORZAR CEROS (Así, si viene "1", se queda como "1")
         const tipo = cleanNoPad(row['tipo']); 
         const orden = cleanNoPad(row['orden']); 
+        const numMunici = cleanNumMunici(row['num_munici']); // NUEVO: Extraer Num Municipal
         
-        const key = u + s + m + l + "_T" + tipo + "_O" + orden;
+        // Llave Estricta (Incluye Num Municipal)
+        const key = u + s + m + l + "_T" + tipo + "_O" + orden + "_NM" + numMunici;
         mapGrafPuertas.set(key, row);
       });
 
@@ -402,16 +412,17 @@
           const l = codLote.substring(11, 14);
           
           const tipoTexto = String(row['Tipo de Puerta'] || '').trim().toUpperCase(); 
-          // Mapeo exacto con su cero ("01", "02", "03", "04")
           const tipo = mapTipoAlfaToCode[tipoTexto] || "01"; 
           const orden = cleanNoPad(row['Número Orden']);
+          const numMunici = cleanNumMunici(row['Número Municipal']); // NUEVO: Extraer Num Municipal
           
-          const key = u + s + m + l + "_T" + tipo + "_O" + orden;
+          // Llave Estricta (Incluye Num Municipal)
+          const key = u + s + m + l + "_T" + tipo + "_O" + orden + "_NM" + numMunici;
           
           mapAlfaPuertas.set(key, {
             fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, 
-            tipo: tipo, // Guardamos el texto "01" explícito
-            num_munici: String(row['Número Municipal'] || 'S/N'), 
+            tipo: tipo, 
+            num_munici: numMunici, 
             orden: orden
           });
         }
@@ -463,11 +474,9 @@
         appendSheetsToWb(wb, dataComisiones);
       } else if (tipo === 'DIF_AREA') {
         fileName = "Reporte_Diferencias_Areas.xlsx";
-        // Pestaña tg_lote
         const wsLote = XLSX.utils.json_to_sheet(dataDifAreas.tg_lote.length ? dataDifAreas.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "", area_grafica: "", area_SICUN: "", diferencia: "" }]);
         XLSX.utils.book_append_sheet(wb, wsLote, "tg_lote");
 
-        // Pestaña tg_construccion
         const wsConst = XLSX.utils.json_to_sheet(dataDifAreas.tg_construccion.length ? dataDifAreas.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", area: "", area_grafica: "", area_SICUN: "", diferencia: "" }]);
         XLSX.utils.book_append_sheet(wb, wsConst, "tg_construccion");
       }
