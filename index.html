@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Validador Catastral Integral - Omisión y Comisión</title>
+  <title>Validador Catastral - Omisión, Comisión y Diferencia de Áreas</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen font-sans">
 
+  <!-- Header -->
   <header class="bg-indigo-700 text-white shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
       <div>
@@ -18,7 +19,7 @@
           </svg>
           Validador Catastral: Alfanumérico vs. Gráfico
         </h1>
-        <p class="text-indigo-200 text-sm mt-1">Control de Calidad - Corrección de Falsas Inconsistencias</p>
+        <p class="text-indigo-200 text-sm mt-1">Control de Calidad: Omisión, Comisión y Diferencia de Áreas (Tolerancia Zero)</p>
       </div>
       <span class="bg-indigo-800 text-indigo-100 text-xs px-3 py-1.5 rounded-full border border-indigo-600 font-medium">GitHub Pages Edition</span>
     </div>
@@ -26,28 +27,33 @@
 
   <main class="max-w-7xl mx-auto px-4 py-8">
 
-    <!-- Carga Masiva -->
+    <!-- Carga Masiva de Archivos -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
       <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
         <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs flex items-center justify-center font-bold">1</span>
         Carga Masiva de Reportes Excel
       </h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Alfanuméricos -->
         <div class="border-2 border-dashed border-slate-300 rounded-lg p-5 text-center hover:border-indigo-400 transition bg-slate-50/50">
           <label class="block cursor-pointer">
             <span class="text-sm font-semibold text-slate-700 block mb-1">Reportes Alfanuméricos (SICUN)</span>
+            <span class="text-xs text-slate-500 block mb-3">Sube Lotes, Edificas, Construcciones, Ingresos y Unidades Administrativas</span>
             <input type="file" id="filesAlfa" accept=".xlsx, .xls" multiple class="hidden" onchange="onFilesSelected(this, 'alfaLabel', 'alfaList')">
             <span id="alfaLabel" class="inline-block bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-50 shadow-sm transition">Seleccionar Archivos</span>
           </label>
-          <div id="alfaList" class="mt-3 text-xs text-slate-600 space-y-1 max-h-24 overflow-y-auto font-mono"></div>
+          <div id="alfaList" class="mt-3 text-xs text-slate-600 space-y-1 max-h-28 overflow-y-auto font-mono text-left"></div>
         </div>
+
+        <!-- Gráficos -->
         <div class="border-2 border-dashed border-slate-300 rounded-lg p-5 text-center hover:border-indigo-400 transition bg-slate-50/50">
           <label class="block cursor-pointer">
             <span class="text-sm font-semibold text-slate-700 block mb-1">Reportes Gráficos (Shapefile)</span>
+            <span class="text-xs text-slate-500 block mb-3">Sube tg_lote.xlsx, tg_edifica.xlsx, tg_construccion.xlsx, tg_puerta.xlsx</span>
             <input type="file" id="filesGraf" accept=".xlsx, .xls" multiple class="hidden" onchange="onFilesSelected(this, 'grafLabel', 'grafList')">
             <span id="grafLabel" class="inline-block bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-50 shadow-sm transition">Seleccionar Archivos</span>
           </label>
-          <div id="grafList" class="mt-3 text-xs text-slate-600 space-y-1 max-h-24 overflow-y-auto font-mono"></div>
+          <div id="grafList" class="mt-3 text-xs text-slate-600 space-y-1 max-h-28 overflow-y-auto font-mono text-left"></div>
         </div>
       </div>
     </div>
@@ -56,7 +62,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8 text-center">
       <button onclick="procesarTodo()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-6 rounded-xl transition shadow-lg flex items-center justify-center gap-2 text-base">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-        Ejecutar Validación Precisa (Filtro por Sector y Manzana)
+        Ejecutar Validaciones (Omisión, Comisión y Diferencia de Áreas)
       </button>
     </div>
 
@@ -65,57 +71,75 @@
       
       <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-indigo-900 text-sm flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <span><strong>Ambitos evaluados:</strong> <span id="ambitosDetectadosBadge" class="font-mono text-xs bg-indigo-200 px-2 py-0.5 rounded">--</span></span>
+          <span><strong>Ambitos evaluados (Sector - Manzana):</strong> <span id="ambitosDetectadosBadge" class="font-mono text-xs bg-indigo-200 px-2 py-0.5 rounded">--</span></span>
         </div>
+        <span class="text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-full font-medium">Tolerancia de Área: 0.00 m²</span>
       </div>
 
-      <!-- Métricas -->
+      <!-- Métricas Resumen -->
       <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <!-- Lotes -->
         <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm border-l-4 border-l-blue-500">
-          <span class="text-xs font-bold text-blue-600 uppercase">Lotes</span>
-          <div class="mt-2 text-xs flex justify-between">
-            <span class="text-amber-700">Omisiones: <strong id="statLotesOmision" class="text-base text-slate-900">0</strong></span>
-            <span class="text-rose-700">Comisiones: <strong id="statLotesComision" class="text-base text-slate-900">0</strong></span>
+          <span class="text-xs font-bold text-blue-600 uppercase block">Lotes</span>
+          <div class="mt-2 text-xs space-y-1">
+            <div class="flex justify-between"><span class="text-amber-700 font-semibold">Omisión:</span> <strong id="statLotesOmision" class="text-slate-900">0</strong></div>
+            <div class="flex justify-between"><span class="text-rose-700 font-semibold">Comisión:</span> <strong id="statLotesComision" class="text-slate-900">0</strong></div>
+            <div class="flex justify-between border-t pt-1"><span class="text-indigo-700 font-semibold">Dif. Área:</span> <strong id="statLotesDifArea" class="text-slate-900">0</strong></div>
           </div>
         </div>
+
         <!-- Edificaciones -->
         <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm border-l-4 border-l-purple-500">
-          <span class="text-xs font-bold text-purple-600 uppercase">Edificaciones</span>
-          <div class="mt-2 text-xs flex justify-between">
-            <span class="text-amber-700">Omisiones: <strong id="statEdificasOmision" class="text-base text-slate-900">0</strong></span>
-            <span class="text-rose-700">Comisiones: <strong id="statEdificasComision" class="text-base text-slate-900">0</strong></span>
+          <span class="text-xs font-bold text-purple-600 uppercase block">Edificaciones</span>
+          <div class="mt-2 text-xs space-y-1">
+            <div class="flex justify-between"><span class="text-amber-700 font-semibold">Omisión:</span> <strong id="statEdificasOmision" class="text-slate-900">0</strong></div>
+            <div class="flex justify-between"><span class="text-rose-700 font-semibold">Comisión:</span> <strong id="statEdificasComision" class="text-slate-900">0</strong></div>
+            <div class="flex justify-between border-t pt-1"><span class="text-slate-400 font-semibold">Dif. Área:</span> <strong class="text-slate-400">N/A</strong></div>
           </div>
         </div>
+
         <!-- Construcciones -->
         <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
-          <span class="text-xs font-bold text-amber-600 uppercase">Construcciones</span>
-          <div class="mt-2 text-xs flex justify-between">
-            <span class="text-amber-700">Omisiones: <strong id="statConstOmision" class="text-base text-slate-900">0</strong></span>
-            <span class="text-rose-700">Comisiones: <strong id="statConstComision" class="text-base text-slate-900">0</strong></span>
+          <span class="text-xs font-bold text-amber-600 uppercase block">Construcciones (Pisos)</span>
+          <div class="mt-2 text-xs space-y-1">
+            <div class="flex justify-between"><span class="text-amber-700 font-semibold">Omisión:</span> <strong id="statConstOmision" class="text-slate-900">0</strong></div>
+            <div class="flex justify-between"><span class="text-rose-700 font-semibold">Comisión:</span> <strong id="statConstComision" class="text-slate-900">0</strong></div>
+            <div class="flex justify-between border-t pt-1"><span class="text-indigo-700 font-semibold">Dif. Área:</span> <strong id="statConstDifArea" class="text-slate-900">0</strong></div>
           </div>
         </div>
+
         <!-- Puertas -->
         <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm border-l-4 border-l-rose-500">
-          <span class="text-xs font-bold text-rose-600 uppercase">Puertas</span>
-          <div class="mt-2 text-xs flex justify-between">
-            <span class="text-amber-700">Omisiones: <strong id="statPuertasOmision" class="text-base text-slate-900">0</strong></span>
-            <span class="text-rose-700">Comisiones: <strong id="statPuertasComision" class="text-base text-slate-900">0</strong></span>
+          <span class="text-xs font-bold text-rose-600 uppercase block">Puertas</span>
+          <div class="mt-2 text-xs space-y-1">
+            <div class="flex justify-between"><span class="text-amber-700 font-semibold">Omisión:</span> <strong id="statPuertasOmision" class="text-slate-900">0</strong></div>
+            <div class="flex justify-between"><span class="text-rose-700 font-semibold">Comisión:</span> <strong id="statPuertasComision" class="text-slate-900">0</strong></div>
+            <div class="flex justify-between border-t pt-1"><span class="text-slate-400 font-semibold">Dif. Área:</span> <strong class="text-slate-400">N/A</strong></div>
           </div>
         </div>
       </div>
 
-      <!-- Botones de Descarga -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div>
-          <h3 class="text-base font-semibold text-slate-900">Descarga de Reportes (Estructura Gráfica)</h3>
-        </div>
-        <div class="flex gap-3">
-          <button onclick="exportarLibroEspecializado('OMISION')" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm px-5 py-3 rounded-xl shadow-md">
-            Descargar Consolidado OMISIÓN
+      <!-- Botones de Descarga de Consolidados -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h3 class="text-base font-semibold text-slate-900 mb-4">Descarga de Reportes Consolidados (Estructura Gráfica)</h3>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <!-- Descargar OMISIÓN -->
+          <button onclick="exportarLibroEspecializado('OMISION')" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm px-4 py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Consolidado OMISIÓN (.xlsx)
           </button>
-          <button onclick="exportarLibroEspecializado('COMISION')" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm px-5 py-3 rounded-xl shadow-md">
-            Descargar Consolidado COMISIÓN
+
+          <!-- Descargar COMISIÓN -->
+          <button onclick="exportarLibroEspecializado('COMISION')" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm px-4 py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Consolidado COMISIÓN (.xlsx)
+          </button>
+
+          <!-- Descargar DIFERENCIA DE ÁREAS -->
+          <button onclick="exportarLibroEspecializado('DIF_AREA')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-4 py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Consolidado DIFERENCIA ÁREA (.xlsx)
           </button>
         </div>
       </div>
@@ -125,6 +149,7 @@
   <script>
     let dataOmisiones = { tg_lote: [], tg_edifica: [], tg_construccion: [], tg_puerta: [] };
     let dataComisiones = { tg_lote: [], tg_edifica: [], tg_construccion: [], tg_puerta: [] };
+    let dataDifAreas = { tg_lote: [], tg_construccion: [] };
     let ambitosEvaluadosSet = new Set();
 
     const cleanPad = (val, len) => {
@@ -171,15 +196,17 @@
 
       dataOmisiones = { tg_lote: [], tg_edifica: [], tg_construccion: [], tg_puerta: [] };
       dataComisiones = { tg_lote: [], tg_edifica: [], tg_construccion: [], tg_puerta: [] };
+      dataDifAreas = { tg_lote: [], tg_construccion: [] };
       ambitosEvaluadosSet.clear();
 
-      let dataAlfaLotes = [], dataAlfaEdificas = [], dataAlfaConst = [], dataAlfaPuertas = [];
+      let dataAlfaLotes = [], dataAlfaEdificas = [], dataAlfaConst = [], dataAlfaPuertas = [], dataAlfaUA = [];
       let dataGrafLotes = [], dataGrafEdificas = [], dataGrafConst = [], dataGrafPuertas = [];
 
       for (let f of Array.from(inputAlfa)) {
         const name = f.name.toLowerCase();
         const json = await readExcelFile(f);
-        if (name.includes('lote') && !name.includes('ingreso')) dataAlfaLotes = json;
+        if (name.includes('unidad') || name.includes('administrativa')) dataAlfaUA = json;
+        else if (name.includes('lote') && !name.includes('ingreso')) dataAlfaLotes = json;
         else if (name.includes('edifica')) dataAlfaEdificas = json;
         else if (name.includes('construccion')) dataAlfaConst = json;
         else if (name.includes('ingreso') || name.includes('puerta')) dataAlfaPuertas = json;
@@ -194,7 +221,7 @@
         else if (name.includes('puerta')) dataGrafPuertas = json;
       }
 
-      // 1. LOTES
+      // 1. EVALUACIÓN DE LOTES (Omisión / Comisión) Y DIFERENCIA DE ÁREA TERRENO
       let mznaGrafSet = new Set();
       let mapGrafLotes = new Map();
       dataGrafLotes.forEach(row => {
@@ -221,7 +248,46 @@
       });
       evaluarCapa(mapAlfaLotes, mapGrafLotes, 'tg_lote');
 
-      // 2. EDIFICACIONES
+      // 1.B. DIFERENCIA DE ÁREA TERRENO EN LOTES (Usando Reporte_Unidades Administrativas)
+      if (dataAlfaUA.length > 0) {
+        let mapAreaTerrenoAlfa = new Map();
+        dataAlfaUA.forEach(row => {
+          const codRef = String(row['Código de Referencia Catastral'] || '').trim();
+          if (codRef.length >= 14) {
+            const u = codRef.substring(0, 6);
+            const s = codRef.substring(6, 8);
+            const m = codRef.substring(8, 11);
+            if (mznaGrafSet.has(u + s + m)) {
+              const l = codRef.substring(11, 14);
+              const key = u + s + m + l;
+              const areaVal = parseFloat(row['Área De Terreno Verificada (M2)']) || 0;
+              if (areaVal > 0 && !mapAreaTerrenoAlfa.has(key)) {
+                mapAreaTerrenoAlfa.set(key, areaVal);
+              }
+            }
+          }
+        });
+
+        // Comparar con tg_lote (Tolerancia Cero: areaAlfa != areaGraf)
+        mapGrafLotes.forEach((rowGraf, key) => {
+          if (mapAreaTerrenoAlfa.has(key)) {
+            const areaAlfa = mapAreaTerrenoAlfa.get(key);
+            const areaGraf = parseFloat(rowGraf['area']) || 0;
+            const dif = Math.abs(areaAlfa - areaGraf);
+            if (dif > 0.0001) { // Diferencia != 0
+              dataDifAreas.tg_lote.push({
+                ...rowGraf,
+                area_alfa: areaAlfa,
+                area_grafica: areaGraf,
+                diferencia_area: Number((areaAlfa - areaGraf).toFixed(2)),
+                Reporte: "Diferencia de Area Terreno"
+              });
+            }
+          }
+        });
+      }
+
+      // 2. EDIFICACIONES (Omisión / Comisión)
       let mapGrafEdifica = new Map();
       dataGrafEdificas.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
@@ -247,7 +313,7 @@
       });
       evaluarCapa(mapAlfaEdifica, mapGrafEdifica, 'tg_edifica');
 
-      // 3. CONSTRUCCIONES
+      // 3. CONSTRUCCIONES (Omisión / Comisión) Y SUMATORIA DE ÁREAS POR PISO
       let mapGrafConst = new Map();
       dataGrafConst.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
@@ -259,7 +325,9 @@
         mapGrafConst.set(u + s + m + l + e + piso, row);
       });
 
-      let mapAlfaConst = new Map();
+      let mapAlfaConstOmision = new Map();
+      let mapAlfaConstAreasSum = new Map();
+
       dataAlfaConst.forEach(row => {
         const codRef = String(row['Código de Referencia Catastral'] || '').trim();
         const u = codRef.substring(0, 6);
@@ -270,14 +338,39 @@
           const e = codRef.substring(14, 16);
           const piso = cleanPad(row['N° Piso'], 2);
           const key = u + s + m + l + e + piso;
-          mapAlfaConst.set(key, {
-            fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, cod_edific: e, cod_piso: piso, area: row['Área Verificada'] || 0
+          const areaVal = parseFloat(row['Área Verificada']) || 0;
+
+          // Mapa para Omisiones
+          mapAlfaConstOmision.set(key, {
+            fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, cod_edific: e, cod_piso: piso, area: 0
           });
+
+          // SUMATORIA DE ÁREAS POR PISO (Por si un piso tiene múltiples unidades/departamentos)
+          mapAlfaConstAreasSum.set(key, (mapAlfaConstAreasSum.get(key) || 0) + areaVal);
         }
       });
-      evaluarCapa(mapAlfaConst, mapGrafConst, 'tg_construccion');
 
-      // 4. PUERTAS
+      evaluarCapa(mapAlfaConstOmision, mapGrafConst, 'tg_construccion');
+
+      // 3.B. DIFERENCIA DE ÁREA EN CONSTRUCCIONES (Tolerancia Cero: Suma Alfa != Area Grafica)
+      mapGrafConst.forEach((rowGraf, key) => {
+        if (mapAlfaConstAreasSum.has(key)) {
+          const areaAlfaAcumulada = mapAlfaConstAreasSum.get(key);
+          const areaGraf = parseFloat(rowGraf['area']) || 0;
+          const dif = Math.abs(areaAlfaAcumulada - areaGraf);
+          if (dif > 0.0001) { // Diferencia de área mayor a 0 (Tolerancia cero)
+            dataDifAreas.tg_construccion.push({
+              ...rowGraf,
+              area_alfa_acumulada: Number(areaAlfaAcumulada.toFixed(2)),
+              area_grafica: areaGraf,
+              diferencia_area: Number((areaAlfaAcumulada - areaGraf).toFixed(2)),
+              Reporte: "Diferencia de Area Construida por Piso"
+            });
+          }
+        }
+      });
+
+      // 4. PUERTAS (Omisión / Comisión)
       const mapTipoAlfaToCode = { "PRINCIPAL": 1, "SECUNDARIA": 2, "GARAJE": 3, "ESTACIONAMIENTO": 4 };
       let mapGrafPuertas = new Map();
       dataGrafPuertas.forEach(row => {
@@ -309,15 +402,20 @@
       });
       evaluarCapa(mapAlfaPuertas, mapGrafPuertas, 'tg_puerta');
 
-      // Actualizar UI
+      // Actualizar UI con las métricas
       document.getElementById('ambitosDetectadosBadge').innerText = Array.from(ambitosEvaluadosSet).slice(0, 6).join(', ') + (ambitosEvaluadosSet.size > 6 ? '...' : '');
 
       document.getElementById('statLotesOmision').innerText = dataOmisiones.tg_lote.length;
       document.getElementById('statLotesComision').innerText = dataComisiones.tg_lote.length;
+      document.getElementById('statLotesDifArea').innerText = dataDifAreas.tg_lote.length;
+
       document.getElementById('statEdificasOmision').innerText = dataOmisiones.tg_edifica.length;
       document.getElementById('statEdificasComision').innerText = dataComisiones.tg_edifica.length;
+
       document.getElementById('statConstOmision').innerText = dataOmisiones.tg_construccion.length;
       document.getElementById('statConstComision').innerText = dataComisiones.tg_construccion.length;
+      document.getElementById('statConstDifArea').innerText = dataDifAreas.tg_construccion.length;
+
       document.getElementById('statPuertasOmision').innerText = dataOmisiones.tg_puerta.length;
       document.getElementById('statPuertasComision').innerText = dataComisiones.tg_puerta.length;
 
@@ -338,11 +436,28 @@
     }
 
     function exportarLibroEspecializado(tipo) {
-      const dataSource = tipo === 'OMISION' ? dataOmisiones : dataComisiones;
-      const fileName = tipo === 'OMISION' ? "Reporte_Omision_Consolidado.xlsx" : "Reporte_Comision_Consolidado.xlsx";
-
+      let fileName = "";
       const wb = XLSX.utils.book_new();
 
+      if (tipo === 'OMISION') {
+        fileName = "Reporte_Omision_Consolidado.xlsx";
+        appendSheetsToWb(wb, dataOmisiones);
+      } else if (tipo === 'COMISION') {
+        fileName = "Reporte_Comision_Consolidado.xlsx";
+        appendSheetsToWb(wb, dataComisiones);
+      } else if (tipo === 'DIF_AREA') {
+        fileName = "Reporte_Diferencia_Areas_Consolidado.xlsx";
+        const wsLote = XLSX.utils.json_to_sheet(dataDifAreas.tg_lote.length ? dataDifAreas.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "", area_alfa: "", area_grafica: "", diferencia_area: "", Reporte: "" }]);
+        XLSX.utils.book_append_sheet(wb, wsLote, "tg_lote");
+
+        const wsConst = XLSX.utils.json_to_sheet(dataDifAreas.tg_construccion.length ? dataDifAreas.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", area: "", area_alfa_acumulada: "", area_grafica: "", diferencia_area: "", Reporte: "" }]);
+        XLSX.utils.book_append_sheet(wb, wsConst, "tg_construccion");
+      }
+
+      XLSX.writeFile(wb, fileName);
+    }
+
+    function appendSheetsToWb(wb, dataSource) {
       const wsLote = XLSX.utils.json_to_sheet(dataSource.tg_lote.length ? dataSource.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsLote, "tg_lote");
 
@@ -354,8 +469,6 @@
 
       const wsPuerta = XLSX.utils.json_to_sheet(dataSource.tg_puerta.length ? dataSource.tg_puerta : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", tipo: "", num_munici: "", orden: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsPuerta, "tg_puerta");
-
-      XLSX.writeFile(wb, fileName);
     }
   </script>
 </body>
