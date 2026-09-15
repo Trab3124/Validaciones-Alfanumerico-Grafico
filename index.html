@@ -168,7 +168,7 @@
       return s;
     };
 
-    // Limpiador estricto para Número Municipal (quita .0, espacios y asume "S/N" si está vacío)
+    // Limpiador estricto para Número Municipal
     const cleanNumMunici = (val) => {
       if (val === undefined || val === null || val === '') return "S/N";
       let s = String(val).trim().toUpperCase();
@@ -266,7 +266,7 @@
       });
       evaluarCapa(mapAlfaLotes, mapGrafLotes, 'tg_lote');
 
-      // 1.B. DIFERENCIA DE ÁREA TERRENO EN LOTES
+      // 1.B. DIFERENCIA DE ÁREA TERRENO EN LOTES (Corrección: Suma de áreas)
       if (dataAlfaUA.length > 0) {
         let mapAreaTerrenoAlfa = new Map();
         dataAlfaUA.forEach(row => {
@@ -279,8 +279,10 @@
               const l = codRef.substring(11, 14);
               const key = u + s + m + l;
               const areaVal = parseFloat(row['Área De Terreno Verificada (M2)']) || 0;
-              if (areaVal > 0 && !mapAreaTerrenoAlfa.has(key)) {
-                mapAreaTerrenoAlfa.set(key, areaVal);
+              
+              // Sumamos el área al lote en caso de tener varios registros (Ej. Propiedad Exclusiva / Común)
+              if (areaVal > 0) {
+                mapAreaTerrenoAlfa.set(key, (mapAreaTerrenoAlfa.get(key) || 0) + areaVal);
               }
             }
           }
@@ -288,14 +290,14 @@
 
         mapGrafLotes.forEach((rowGraf, key) => {
           if (mapAreaTerrenoAlfa.has(key)) {
-            const areaAlfa = mapAreaTerrenoAlfa.get(key);
+            const areaAlfaAcumulada = mapAreaTerrenoAlfa.get(key);
             const areaGraf = parseFloat(rowGraf['area']) || 0;
-            const dif = Math.abs(areaAlfa - areaGraf);
+            const dif = Math.abs(areaAlfaAcumulada - areaGraf);
             if (dif > 0.0001) { 
               dataDifAreas.tg_lote.push({
                 ...rowGraf, 
                 area_grafica: areaGraf,
-                area_SICUN: areaAlfa,
+                area_SICUN: Number(areaAlfaAcumulada.toFixed(2)),
                 diferencia: Number(dif.toFixed(2))
               });
             }
@@ -329,7 +331,7 @@
       });
       evaluarCapa(mapAlfaEdifica, mapGrafEdifica, 'tg_edifica');
 
-      // 3. CONSTRUCCIONES (Omisión / Comisión)
+      // 3. CONSTRUCCIONES (Omisión / Comisión) Y SUMATORIA DE ÁREAS POR PISO
       let mapGrafConst = new Map();
       dataGrafConst.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
@@ -395,9 +397,8 @@
         
         const tipo = cleanNoPad(row['tipo']); 
         const orden = cleanNoPad(row['orden']); 
-        const numMunici = cleanNumMunici(row['num_munici']); // NUEVO: Extraer Num Municipal
+        const numMunici = cleanNumMunici(row['num_munici']); 
         
-        // Llave Estricta (Incluye Num Municipal)
         const key = u + s + m + l + "_T" + tipo + "_O" + orden + "_NM" + numMunici;
         mapGrafPuertas.set(key, row);
       });
@@ -414,9 +415,8 @@
           const tipoTexto = String(row['Tipo de Puerta'] || '').trim().toUpperCase(); 
           const tipo = mapTipoAlfaToCode[tipoTexto] || "01"; 
           const orden = cleanNoPad(row['Número Orden']);
-          const numMunici = cleanNumMunici(row['Número Municipal']); // NUEVO: Extraer Num Municipal
+          const numMunici = cleanNumMunici(row['Número Municipal']); 
           
-          // Llave Estricta (Incluye Num Municipal)
           const key = u + s + m + l + "_T" + tipo + "_O" + orden + "_NM" + numMunici;
           
           mapAlfaPuertas.set(key, {
