@@ -266,7 +266,7 @@
       });
       evaluarCapa(mapAlfaLotes, mapGrafLotes, 'tg_lote');
 
-      // 1.B. DIFERENCIA DE ÁREA TERRENO EN LOTES (Corrección: Suma de áreas)
+      // 1.B. DIFERENCIA DE ÁREA TERRENO EN LOTES (Suma de áreas alfanuméricas)
       if (dataAlfaUA.length > 0) {
         let mapAreaTerrenoAlfa = new Map();
         dataAlfaUA.forEach(row => {
@@ -280,7 +280,6 @@
               const key = u + s + m + l;
               const areaVal = parseFloat(row['Área De Terreno Verificada (M2)']) || 0;
               
-              // Sumamos el área al lote en caso de tener varios registros (Ej. Propiedad Exclusiva / Común)
               if (areaVal > 0) {
                 mapAreaTerrenoAlfa.set(key, (mapAreaTerrenoAlfa.get(key) || 0) + areaVal);
               }
@@ -331,8 +330,10 @@
       });
       evaluarCapa(mapAlfaEdifica, mapGrafEdifica, 'tg_edifica');
 
-      // 3. CONSTRUCCIONES (Omisión / Comisión) Y SUMATORIA DE ÁREAS POR PISO
+      // 3. CONSTRUCCIONES (Omisión / Comisión) Y SUMATORIA DE ÁREAS GRÁFICAS POR PISO
       let mapGrafConst = new Map();
+      let mapGrafConstAreasSum = new Map(); // NUEVO ACUMULADOR PARA LA GRÁFICA
+
       dataGrafConst.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
         const s = cleanPad(row['cod_sector'], 2);
@@ -340,11 +341,21 @@
         const l = cleanPad(row['cod_lote'], 3);
         const e = cleanPad(row['cod_edific'], 2);
         const piso = cleanPad(row['cod_piso'], 2);
-        mapGrafConst.set(u + s + m + l + e + piso, row);
+        
+        const key = u + s + m + l + e + piso;
+        
+        // Guardamos solo un polígono representativo para validación de Omisión/Comisión y Atributos Base
+        if (!mapGrafConst.has(key)) {
+            mapGrafConst.set(key, row);
+        }
+        
+        // SUMAMOS el área gráfica si hay varios polígonos para el mismo piso
+        const areaGrafVal = parseFloat(row['area']) || 0;
+        mapGrafConstAreasSum.set(key, (mapGrafConstAreasSum.get(key) || 0) + areaGrafVal);
       });
 
       let mapAlfaConstOmision = new Map();
-      let mapAlfaConstAreasSum = new Map();
+      let mapAlfaConstAreasSum = new Map(); // ACUMULADOR PARA ALFANUMÉRICA
 
       dataAlfaConst.forEach(row => {
         const codRef = String(row['Código de Referencia Catastral'] || '').trim();
@@ -368,16 +379,17 @@
 
       evaluarCapa(mapAlfaConstOmision, mapGrafConst, 'tg_construccion');
 
-      // 3.B. DIFERENCIA DE ÁREA EN CONSTRUCCIONES
+      // 3.B. DIFERENCIA DE ÁREA EN CONSTRUCCIONES (Compara Suma Alfa vs Suma Gráfica)
       mapGrafConst.forEach((rowGraf, key) => {
         if (mapAlfaConstAreasSum.has(key)) {
           const areaAlfaAcumulada = mapAlfaConstAreasSum.get(key);
-          const areaGraf = parseFloat(rowGraf['area']) || 0;
-          const dif = Math.abs(areaAlfaAcumulada - areaGraf);
+          const areaGrafAcumulada = mapGrafConstAreasSum.get(key); // USAMOS LA SUMA TOTAL DEL PISO
+          
+          const dif = Math.abs(areaAlfaAcumulada - areaGrafAcumulada);
           if (dif > 0.0001) { 
             dataDifAreas.tg_construccion.push({
               ...rowGraf,
-              area_grafica: areaGraf,
+              area_grafica: Number(areaGrafAcumulada.toFixed(2)),
               area_SICUN: Number(areaAlfaAcumulada.toFixed(2)),
               diferencia: Number(dif.toFixed(2))
             });
