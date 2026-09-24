@@ -341,7 +341,7 @@
       // 3. CONSTRUCCIONES (BASE - tg_construccion normal)
       // =======================================================================
       let mapGrafConstAreasSum = new Map(); 
-      let mapGrafConstBase = new Map(); // Para OC de tg_construccion (18 dígitos)
+      let mapGrafConstBase = new Map(); 
 
       dataGrafConst.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
@@ -352,10 +352,8 @@
         const piso = cleanPad(row['cod_piso'], 2);
         
         const key = u + s + m + l + e + piso;
-        // Solo conservamos un registro representativo por piso para Omision/Comision Base
         if (!mapGrafConstBase.has(key)) mapGrafConstBase.set(key, row);
         
-        // Sumamos área (puede haber varios polígonos)
         const areaGrafVal = parseFloat(row['area']) || 0;
         mapGrafConstAreasSum.set(key, (mapGrafConstAreasSum.get(key) || 0) + areaGrafVal);
       });
@@ -373,13 +371,12 @@
         const piso = cleanPad(row['cod_piso'], 2);
         const catGraf = String(row['categoria'] || '').trim().toUpperCase();
         
-        // Llave Estricta Ampliada: 18 dígitos + Categoría
         const keyOC = u + s + m + l + e + piso + "_C" + catGraf;
         mapGrafConstCat.set(keyOC, row);
       });
 
-      let mapAlfaConstOmisionBase = new Map(); // Para cruzar con tg_construccion
-      let mapAlfaConstOmisionCat = new Map();  // Para cruzar con tg_construccion_2
+      let mapAlfaConstOmisionBase = new Map(); 
+      let mapAlfaConstOmisionCat = new Map();  
       let mapAlfaConstAreasSum = new Map();
 
       dataAlfaConst.forEach(row => {
@@ -394,18 +391,15 @@
           
           const keyBase = u + s + m + l + e + piso;
           
-          // A) Mapeo Base para OC (tg_construccion) -> Un solo registro por piso
           if (!mapAlfaConstOmisionBase.has(keyBase)) {
             mapAlfaConstOmisionBase.set(keyBase, {
               fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, cod_edific: e, cod_piso: piso, area: 0
             });
           }
 
-          // B) Acumulador de Áreas (tg_construccion)
           const areaVal = parseFloat(row['Área Verificada']) || 0;
           mapAlfaConstAreasSum.set(keyBase, (mapAlfaConstAreasSum.get(keyBase) || 0) + areaVal);
 
-          // C) Mapeo Categorías para OC (tg_construccion_2)
           const muro = String(row['Muros y Columna'] || '').trim().toUpperCase();
           const techo = String(row['Techo'] || '').trim().toUpperCase();
           const catAlfa = muro + techo;
@@ -423,7 +417,7 @@
       // Validar OC Detalle Categorías (tg_construccion_2)
       evaluarCapa(mapAlfaConstOmisionCat, mapGrafConstCat, 'tg_construccion_2');
 
-      // Validar Diferencia de Áreas usando tg_construccion normal
+      // Validar Diferencia de Áreas (tg_construccion)
       mapGrafConstBase.forEach((rowGraf, keyArea) => {
         if (mapAlfaConstAreasSum.has(keyArea)) {
           const areaAlfaAcumulada = mapAlfaConstAreasSum.get(keyArea);
@@ -506,12 +500,16 @@
     function evaluarCapa(mapAlfa, mapGraf, nombreCapa) {
       mapAlfa.forEach((rowAlfa, key) => { 
         if (!mapGraf.has(key)) {
-          dataOmisiones[nombreCapa].push({ ...rowAlfa, Reporte: "Existe SICUN falta en grafico" });
+          let newRow = { ...rowAlfa, Reporte: "Existe SICUN falta en grafico" };
+          delete newRow.area; // ELIMINA LA COLUMNA ÁREA
+          dataOmisiones[nombreCapa].push(newRow);
         }
       });
       mapGraf.forEach((rowGraf, key) => { 
         if (!mapAlfa.has(key)) {
-          dataComisiones[nombreCapa].push({ ...rowGraf, Reporte: "Existe en grafico falta en SICUN" });
+          let newRow = { ...rowGraf, Reporte: "Existe en grafico falta en SICUN" };
+          delete newRow.area; // ELIMINA LA COLUMNA ÁREA
+          dataComisiones[nombreCapa].push(newRow);
         }
       });
     }
@@ -540,18 +538,17 @@
     }
 
     function appendSheetsToWb(wb, dataSource) {
-      const wsLote = XLSX.utils.json_to_sheet(dataSource.tg_lote.length ? dataSource.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "", Reporte: "" }]);
+      // Definimos el objeto vacío SIN la propiedad 'area' para mantener las cabeceras limpias
+      const wsLote = XLSX.utils.json_to_sheet(dataSource.tg_lote.length ? dataSource.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsLote, "tg_lote");
 
-      const wsEdifica = XLSX.utils.json_to_sheet(dataSource.tg_edifica.length ? dataSource.tg_edifica : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", area: "", Reporte: "" }]);
+      const wsEdifica = XLSX.utils.json_to_sheet(dataSource.tg_edifica.length ? dataSource.tg_edifica : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsEdifica, "tg_edifica");
 
-      // Construcción normal (Base 18 dígitos)
-      const wsConst = XLSX.utils.json_to_sheet(dataSource.tg_construccion.length ? dataSource.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", area: "", Reporte: "" }]);
+      const wsConst = XLSX.utils.json_to_sheet(dataSource.tg_construccion.length ? dataSource.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsConst, "tg_construccion");
 
-      // Construcción 2 (Con Categorías)
-      const wsConst2 = XLSX.utils.json_to_sheet(dataSource.tg_construccion_2.length ? dataSource.tg_construccion_2 : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", categoria: "", area: "", Reporte: "" }]);
+      const wsConst2 = XLSX.utils.json_to_sheet(dataSource.tg_construccion_2.length ? dataSource.tg_construccion_2 : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", categoria: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsConst2, "tg_construccion_2");
 
       const wsPuerta = XLSX.utils.json_to_sheet(dataSource.tg_puerta.length ? dataSource.tg_puerta : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", tipo: "", num_munici: "", orden: "", Reporte: "" }]);
