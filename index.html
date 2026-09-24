@@ -49,7 +49,7 @@
         <div class="border-2 border-dashed border-slate-300 rounded-lg p-5 text-center hover:border-indigo-400 transition bg-slate-50/50">
           <label class="block cursor-pointer">
             <span class="text-sm font-semibold text-slate-700 block mb-1">Reportes Gráficos (Shapefile)</span>
-            <span class="text-xs text-slate-500 block mb-3">Sube tg_lote.xlsx, tg_edifica.xlsx, tg_construccion.xlsx, tg_puerta.xlsx</span>
+            <span class="text-xs text-slate-500 block mb-3">Sube tg_lote.xlsx, tg_edifica.xlsx, tg_construccion.xlsx, tg_construccion_2.xlsx, tg_puerta.xlsx</span>
             <input type="file" id="filesGraf" accept=".xlsx, .xls" multiple class="hidden" onchange="onFilesSelected(this, 'grafLabel', 'grafList')">
             <span id="grafLabel" class="inline-block bg-white text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-50 shadow-sm transition">Seleccionar Archivos</span>
           </label>
@@ -152,7 +152,6 @@
     let dataDifAreas = { tg_lote: [], tg_construccion: [] };
     let ambitosEvaluadosSet = new Set();
 
-    // Rellena con ceros a la izquierda
     const cleanPad = (val, len) => {
       if (val === undefined || val === null) return "".padStart(len, '0');
       let s = String(val).trim();
@@ -160,7 +159,6 @@
       return s.padStart(len, '0');
     };
 
-    // NO rellena con ceros. Extrae el valor tal cual.
     const cleanNoPad = (val) => {
       if (val === undefined || val === null) return "";
       let s = String(val).trim();
@@ -168,7 +166,6 @@
       return s;
     };
 
-    // Limpiador estricto para Número Municipal
     const cleanNumMunici = (val) => {
       if (val === undefined || val === null || val === '') return "S/N";
       let s = String(val).trim().toUpperCase();
@@ -218,8 +215,9 @@
       ambitosEvaluadosSet.clear();
 
       let dataAlfaLotes = [], dataAlfaEdificas = [], dataAlfaConst = [], dataAlfaPuertas = [], dataAlfaUA = [];
-      let dataGrafLotes = [], dataGrafEdificas = [], dataGrafConst = [], dataGrafPuertas = [];
+      let dataGrafLotes = [], dataGrafEdificas = [], dataGrafConst = [], dataGrafConst2 = [], dataGrafPuertas = [];
 
+      // Leer Alfanuméricos
       for (let f of Array.from(inputAlfa)) {
         const name = f.name.toLowerCase();
         const json = await readExcelFile(f);
@@ -230,16 +228,18 @@
         else if (name.includes('ingreso') || name.includes('puerta')) dataAlfaPuertas = json;
       }
 
+      // Leer Gráficos (El orden del IF es importante para tg_construccion_2)
       for (let f of Array.from(inputGraf)) {
         const name = f.name.toLowerCase();
         const json = await readExcelFile(f);
         if (name.includes('lote')) dataGrafLotes = json;
         else if (name.includes('edifica')) dataGrafEdificas = json;
+        else if (name.includes('construccion_2')) dataGrafConst2 = json;
         else if (name.includes('construccion')) dataGrafConst = json;
         else if (name.includes('puerta')) dataGrafPuertas = json;
       }
 
-      // 1. EVALUACIÓN DE LOTES (Omisión / Comisión)
+      // 1. EVALUACIÓN DE LOTES
       let mznaGrafSet = new Set();
       let mapGrafLotes = new Map();
       dataGrafLotes.forEach(row => {
@@ -266,7 +266,7 @@
       });
       evaluarCapa(mapAlfaLotes, mapGrafLotes, 'tg_lote');
 
-      // 1.B. DIFERENCIA DE ÁREA TERRENO EN LOTES (Suma de áreas alfanuméricas)
+      // 1.B. DIFERENCIA DE ÁREA TERRENO EN LOTES
       if (dataAlfaUA.length > 0) {
         let mapAreaTerrenoAlfa = new Map();
         dataAlfaUA.forEach(row => {
@@ -279,7 +279,6 @@
               const l = codRef.substring(11, 14);
               const key = u + s + m + l;
               const areaVal = parseFloat(row['Área De Terreno Verificada (M2)']) || 0;
-              
               if (areaVal > 0) {
                 mapAreaTerrenoAlfa.set(key, (mapAreaTerrenoAlfa.get(key) || 0) + areaVal);
               }
@@ -304,7 +303,7 @@
         });
       }
 
-      // 2. EDIFICACIONES (Omisión / Comisión)
+      // 2. EDIFICACIONES
       let mapGrafEdifica = new Map();
       dataGrafEdificas.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
@@ -330,9 +329,11 @@
       });
       evaluarCapa(mapAlfaEdifica, mapGrafEdifica, 'tg_edifica');
 
-      // 3. CONSTRUCCIONES (Omisión / Comisión) Y SUMATORIA DE ÁREAS GRÁFICAS POR PISO
-      let mapGrafConst = new Map();
-      let mapGrafConstAreasSum = new Map(); // NUEVO ACUMULADOR PARA LA GRÁFICA
+      // =======================================================================
+      // 3. CONSTRUCCIONES (DIFERENCIA DE ÁREAS con tg_construccion)
+      // =======================================================================
+      let mapGrafConstAreasSum = new Map(); 
+      let mapGrafConst = new Map(); // Para arrastrar atributos al excel de áreas
 
       dataGrafConst.forEach(row => {
         const u = cleanPad(row['ubigeo'], 6);
@@ -343,19 +344,33 @@
         const piso = cleanPad(row['cod_piso'], 2);
         
         const key = u + s + m + l + e + piso;
+        if (!mapGrafConst.has(key)) mapGrafConst.set(key, row);
         
-        // Guardamos solo un polígono representativo para validación de Omisión/Comisión y Atributos Base
-        if (!mapGrafConst.has(key)) {
-            mapGrafConst.set(key, row);
-        }
-        
-        // SUMAMOS el área gráfica si hay varios polígonos para el mismo piso
         const areaGrafVal = parseFloat(row['area']) || 0;
         mapGrafConstAreasSum.set(key, (mapGrafConstAreasSum.get(key) || 0) + areaGrafVal);
       });
 
+      let mapAlfaConstAreasSum = new Map();
+
+      // =======================================================================
+      // 3.B CONSTRUCCIONES (OMISIÓN/COMISIÓN con tg_construccion_2 y Categorías)
+      // =======================================================================
+      let mapGrafConst2 = new Map();
+      dataGrafConst2.forEach(row => {
+        const u = cleanPad(row['ubigeo'], 6);
+        const s = cleanPad(row['cod_sector'], 2);
+        const m = cleanPad(row['cod_mzna'], 3);
+        const l = cleanPad(row['cod_lote'], 3);
+        const e = cleanPad(row['cod_edific'], 2);
+        const piso = cleanPad(row['cod_piso'], 2);
+        const catGraf = String(row['categoria'] || '').trim().toUpperCase();
+        
+        // Llave Estricta Ampliada: 18 dígitos + Categoría
+        const keyOC = u + s + m + l + e + piso + "_C" + catGraf;
+        mapGrafConst2.set(keyOC, row);
+      });
+
       let mapAlfaConstOmision = new Map();
-      let mapAlfaConstAreasSum = new Map(); // ACUMULADOR PARA ALFANUMÉRICA
 
       dataAlfaConst.forEach(row => {
         const codRef = String(row['Código de Referencia Catastral'] || '').trim();
@@ -366,24 +381,33 @@
           const l = codRef.substring(11, 14);
           const e = codRef.substring(14, 16);
           const piso = cleanPad(row['N° Piso'], 2);
-          const key = u + s + m + l + e + piso;
+          
+          // 1. Acumulador para Diferencia de Áreas (Llave normal sin categoría)
+          const keyArea = u + s + m + l + e + piso;
           const areaVal = parseFloat(row['Área Verificada']) || 0;
+          mapAlfaConstAreasSum.set(keyArea, (mapAlfaConstAreasSum.get(keyArea) || 0) + areaVal);
 
-          mapAlfaConstOmision.set(key, {
-            fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, cod_edific: e, cod_piso: piso, area: 0
+          // 2. Mapa para Omisión/Comisión (Llave con categoría Muros+Techo)
+          const muro = String(row['Muros y Columna'] || '').trim().toUpperCase();
+          const techo = String(row['Techo'] || '').trim().toUpperCase();
+          const catAlfa = muro + techo;
+          
+          const keyOC = u + s + m + l + e + piso + "_C" + catAlfa;
+          
+          mapAlfaConstOmision.set(keyOC, {
+            fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, cod_edific: e, cod_piso: piso, categoria: catAlfa, area: 0
           });
-
-          mapAlfaConstAreasSum.set(key, (mapAlfaConstAreasSum.get(key) || 0) + areaVal);
         }
       });
 
-      evaluarCapa(mapAlfaConstOmision, mapGrafConst, 'tg_construccion');
+      // Validar Omisión/Comisión usando tg_construccion_2
+      evaluarCapa(mapAlfaConstOmision, mapGrafConst2, 'tg_construccion');
 
-      // 3.B. DIFERENCIA DE ÁREA EN CONSTRUCCIONES (Compara Suma Alfa vs Suma Gráfica)
-      mapGrafConst.forEach((rowGraf, key) => {
-        if (mapAlfaConstAreasSum.has(key)) {
-          const areaAlfaAcumulada = mapAlfaConstAreasSum.get(key);
-          const areaGrafAcumulada = mapGrafConstAreasSum.get(key); // USAMOS LA SUMA TOTAL DEL PISO
+      // Validar Diferencia de Áreas usando tg_construccion normal
+      mapGrafConst.forEach((rowGraf, keyArea) => {
+        if (mapAlfaConstAreasSum.has(keyArea)) {
+          const areaAlfaAcumulada = mapAlfaConstAreasSum.get(keyArea);
+          const areaGrafAcumulada = mapGrafConstAreasSum.get(keyArea);
           
           const dif = Math.abs(areaAlfaAcumulada - areaGrafAcumulada);
           if (dif > 0.0001) { 
@@ -397,7 +421,7 @@
         }
       });
 
-      // 4. PUERTAS (Corrección Aplicada: Tipo, Orden y Num. Municipal en la Llave)
+      // 4. PUERTAS
       const mapTipoAlfaToCode = { "PRINCIPAL": "01", "SECUNDARIA": "02", "GARAJE": "03", "ESTACIONAMIENTO": "04" };
       
       let mapGrafPuertas = new Map();
@@ -406,7 +430,6 @@
         const s = cleanPad(row['cod_sector'], 2);
         const m = cleanPad(row['cod_mzna'], 3);
         const l = cleanPad(row['cod_lote'], 3);
-        
         const tipo = cleanNoPad(row['tipo']); 
         const orden = cleanNoPad(row['orden']); 
         const numMunici = cleanNumMunici(row['num_munici']); 
@@ -423,25 +446,21 @@
         const m = codLote.substring(8, 11);
         if (mznaGrafSet.has(u + s + m)) {
           const l = codLote.substring(11, 14);
-          
           const tipoTexto = String(row['Tipo de Puerta'] || '').trim().toUpperCase(); 
           const tipo = mapTipoAlfaToCode[tipoTexto] || "01"; 
           const orden = cleanNoPad(row['Número Orden']);
           const numMunici = cleanNumMunici(row['Número Municipal']); 
           
           const key = u + s + m + l + "_T" + tipo + "_O" + orden + "_NM" + numMunici;
-          
           mapAlfaPuertas.set(key, {
             fid: 0, ubigeo: u, cod_sector: s, cod_mzna: m, cod_lote: l, 
-            tipo: tipo, 
-            num_munici: numMunici, 
-            orden: orden
+            tipo: tipo, num_munici: numMunici, orden: orden
           });
         }
       });
       evaluarCapa(mapAlfaPuertas, mapGrafPuertas, 'tg_puerta');
 
-      // Actualizar UI con las métricas
+      // Actualizar UI
       document.getElementById('ambitosDetectadosBadge').innerText = Array.from(ambitosEvaluadosSet).slice(0, 6).join(', ') + (ambitosEvaluadosSet.size > 6 ? '...' : '');
 
       document.getElementById('statLotesOmision').innerText = dataOmisiones.tg_lote.length;
@@ -486,6 +505,7 @@
         appendSheetsToWb(wb, dataComisiones);
       } else if (tipo === 'DIF_AREA') {
         fileName = "Reporte_Diferencias_Areas.xlsx";
+        
         const wsLote = XLSX.utils.json_to_sheet(dataDifAreas.tg_lote.length ? dataDifAreas.tg_lote : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", area: "", area_grafica: "", area_SICUN: "", diferencia: "" }]);
         XLSX.utils.book_append_sheet(wb, wsLote, "tg_lote");
 
@@ -503,7 +523,8 @@
       const wsEdifica = XLSX.utils.json_to_sheet(dataSource.tg_edifica.length ? dataSource.tg_edifica : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", area: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsEdifica, "tg_edifica");
 
-      const wsConst = XLSX.utils.json_to_sheet(dataSource.tg_construccion.length ? dataSource.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", area: "", Reporte: "" }]);
+      // La pestaña construccion ahora exporta la estructura con "categoria"
+      const wsConst = XLSX.utils.json_to_sheet(dataSource.tg_construccion.length ? dataSource.tg_construccion : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", cod_edific: "", cod_piso: "", categoria: "", area: "", Reporte: "" }]);
       XLSX.utils.book_append_sheet(wb, wsConst, "tg_construccion");
 
       const wsPuerta = XLSX.utils.json_to_sheet(dataSource.tg_puerta.length ? dataSource.tg_puerta : [{ fid: "", ubigeo: "", cod_sector: "", cod_mzna: "", cod_lote: "", tipo: "", num_munici: "", orden: "", Reporte: "" }]);
